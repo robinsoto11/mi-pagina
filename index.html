@@ -1118,6 +1118,7 @@ $("cerrarSesion").addEventListener("click", async () => {
     }
 
 
+
 async function cargarPerfil(usuario) {
   $("correoPerfil").textContent = usuario.email || "";
 
@@ -1236,6 +1237,58 @@ $("formLogin").addEventListener("submit", async (evento) => {
 
 // GUARDAR PERFIL
 $("formPerfil").addEventListener("submit", async (evento) => {
+  evento.preventDefault();
+
+  const { data, error: errorUsuario } = await cliente.auth.getUser();
+  const usuario = data?.user;
+
+  if (errorUsuario || !usuario) {
+    informar("Inicia sesión para editar tu perfil.");
+    return;
+  }
+
+  const nombre = $("nombrePerfil").value.trim();
+  const biografia = $("biografiaPerfil").value.trim();
+
+  if (!nombre) {
+    informar("El nombre no puede estar vacío.");
+    return;
+  }
+
+  informar("Guardando perfil...");
+
+  const { error } = await cliente
+    .from("perfiles")
+    .update({
+      nombre,
+      biografia,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", usuario.id);
+
+  if (error) {
+    informar("No se pudo guardar el perfil: " + error.message);
+    return;
+  }
+
+  informar("¡Perfil actualizado correctamente!");
+  await cargarPerfil(usuario);
+});
+
+// CERRAR SESIÓN
+$("cerrarSesion").addEventListener("click", async () => {
+  const { error } = await cliente.auth.signOut();
+
+  if (error) {
+    informar("No se pudo cerrar sesión: " + error.message);
+    return;
+  }
+
+  window.esAdministrador = false;
+  informar("Sesión cerrada.");
+  await actualizarSesion();
+});
+
   evento.preventDefault();
 
   const { data, error: errorUsuario } = await cliente.auth.getUser();
