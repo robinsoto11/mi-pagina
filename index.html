@@ -7,9 +7,7 @@
   <title>Mi espacio web</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -25,9 +23,7 @@
       text-align: center;
     }
 
-    header p {
-      color: #cbd5e1;
-    }
+    header p { color: #cbd5e1; }
 
     main {
       max-width: 850px;
@@ -43,9 +39,7 @@
       box-shadow: 0 3px 12px #0000000d;
     }
 
-    h2 {
-      color: #1d4ed8;
-    }
+    h2 { color: #1d4ed8; }
 
     input, textarea, button {
       width: 100%;
@@ -55,9 +49,7 @@
       border-radius: 7px;
     }
 
-    input, textarea {
-      border: 1px solid #cbd5e1;
-    }
+    input, textarea { border: 1px solid #cbd5e1; }
 
     button {
       background: #2563eb;
@@ -66,15 +58,25 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background: #1d4ed8;
-    }
+    button:hover { background: #1d4ed8; }
+
+    button:disabled { opacity: .6; cursor: wait; }
 
     .item {
       border-top: 1px solid #e2e8f0;
       padding: 12px 0;
       overflow-wrap: anywhere;
     }
+
+    .item a { color: #1d4ed8; }
+
+    .item button {
+      width: auto;
+      padding: 8px 12px;
+      margin-left: 5px;
+    }
+
+    .danger { background: #dc2626; }
 
     .aviso {
       background: #fef3c7;
@@ -83,6 +85,10 @@
       border-radius: 8px;
       font-size: 14px;
     }
+
+    .mensaje { overflow-wrap: anywhere; }
+
+    [hidden] { display: none !important; }
 
     footer {
       text-align: center;
@@ -93,90 +99,340 @@
 </head>
 
 <body>
-
   <header>
     <h1>Mi espacio web</h1>
     <p>Archivos, documentos y notas en un solo lugar.</p>
   </header>
 
   <main>
-
     <section>
       <h2>📁 Archivos compartidos</h2>
       <p>Documentos disponibles para los visitantes.</p>
-
-      <div id="archivos">
-        <p>Todavía no hay archivos publicados.</p>
-      </div>
+      <div id="archivos">Cargando archivos...</div>
     </section>
 
     <section>
       <h2>📝 Notas</h2>
-
-      <div id="notas">
-        <p>Todavía no hay notas publicadas.</p>
-      </div>
+      <div id="notas">Cargando notas...</div>
     </section>
 
     <section>
       <h2>🔐 Panel de administrador</h2>
 
-      <p class="aviso">
-        Esta es una versión inicial. El panel todavía no tiene
-        autenticación real ni guarda información permanentemente.
-      </p>
+      <div id="login">
+        <p>Inicia sesión para administrar tu página.</p>
 
-      <label for="titulo">Título de la nota</label>
-      <input
-        type="text"
-        id="titulo"
-        placeholder="Escribe un título"
-      >
+        <form id="formLogin">
+          <label for="correo">Correo electrónico</label>
+          <input id="correo" type="email" autocomplete="username"
+                 required placeholder="Tu correo de Supabase">
 
-      <label for="contenido">Contenido de la nota</label>
-      <textarea
-        id="contenido"
-        rows="4"
-        placeholder="Escribe tu nota aquí"
-      ></textarea>
+          <label for="contrasena">Contraseña</label>
+          <input id="contrasena" type="password"
+                 autocomplete="current-password" required
+                 placeholder="Tu contraseña">
 
-      <button id="guardar">Vista previa de la nota</button>
+          <button type="submit">Iniciar sesión</button>
+        </form>
+      </div>
 
-      <div id="resultado"></div>
+      <div id="administracion" hidden>
+        <p>Sesión iniciada. Ya puedes administrar tu contenido.</p>
+        <button id="cerrarSesion">Cerrar sesión</button>
+
+        <h3>Subir un archivo</h3>
+        <p>Selecciona un documento para publicarlo.</p>
+        <input id="archivoNuevo" type="file">
+        <button id="subirArchivo">Subir archivo</button>
+
+        <h3>Publicar una nota</h3>
+        <form id="formNota">
+          <label for="titulo">Título</label>
+          <input id="titulo" required maxlength="200"
+                 placeholder="Escribe el título">
+
+          <label for="contenido">Contenido</label>
+          <textarea id="contenido" rows="4" required
+                    placeholder="Escribe tu nota"></textarea>
+
+          <button type="submit">Publicar nota</button>
+        </form>
+
+        <p class="aviso">
+          Los archivos y las notas publicados son visibles para todos.
+          No subas información privada.
+        </p>
+      </div>
+
+      <p id="mensaje" class="mensaje" role="status"></p>
     </section>
-
   </main>
 
-  <footer>
-    Mi espacio web © 2026
-  </footer>
+  <footer>Mi espacio web © 2026</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    document.getElementById("guardar").addEventListener("click", () => {
-      const titulo = document.getElementById("titulo").value.trim();
-      const contenido = document.getElementById("contenido").value.trim();
-      const resultado = document.getElementById("resultado");
+    const SUPABASE_URL =
+      "https://tbqvglswmdtghbbwkhjs.supabase.co";
 
-      if (!titulo || !contenido) {
-        resultado.textContent = "Completa el título y el contenido.";
+    const SUPABASE_KEY =
+      "sb_publishable_uVyHJ9U5mz2kUBJ12dH9rQ_F-wH9-a3";
+
+    const cliente = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+    const $ = id => document.getElementById(id);
+
+    function informar(texto) {
+      $("mensaje").textContent = texto;
+    }
+
+    function crearElemento(etiqueta, texto, clase) {
+      const elemento = document.createElement(etiqueta);
+      elemento.textContent = texto;
+      if (clase) elemento.className = clase;
+      return elemento;
+    }
+
+    async function cargarArchivos() {
+      const contenedor = $("archivos");
+      contenedor.replaceChildren();
+
+      const { data, error } = await cliente.storage
+        .from("archivos-publicos")
+        .list("", { limit: 100, sortBy: { column: "name", order: "asc" } });
+
+      if (error) {
+        contenedor.textContent = "No se pudieron cargar los archivos.";
+        console.error(error);
         return;
       }
 
-      resultado.replaceChildren();
+      const archivos = (data || []).filter(
+        archivo => archivo.name && archivo.name !== ".emptyFolderPlaceholder"
+      );
 
-      const nota = document.createElement("div");
-      nota.className = "item";
+      if (!archivos.length) {
+        contenedor.textContent = "Todavía no hay archivos publicados.";
+        return;
+      }
 
-      const encabezado = document.createElement("h3");
-      encabezado.textContent = titulo;
+      for (const archivo of archivos) {
+        const fila = crearElemento("div", "", "item");
+        const enlace = crearElemento("a", archivo.name);
+        const { data: urlData } = cliente.storage
+          .from("archivos-publicos")
+          .getPublicUrl(archivo.name);
 
-      const texto = document.createElement("p");
-      texto.textContent = contenido;
+        enlace.href = urlData.publicUrl;
+        enlace.target = "_blank";
+        enlace.rel = "noopener noreferrer";
+        fila.appendChild(enlace);
 
-      nota.append(encabezado, texto);
-      resultado.appendChild(nota);
+        if (window.esAdministrador) {
+          const eliminar = crearElemento("button", "Eliminar");
+          eliminar.className = "danger";
+
+          eliminar.addEventListener("click", async () => {
+            if (!confirm("¿Seguro que quieres eliminar este archivo?")) return;
+
+            const { error: errorEliminar } = await cliente.storage
+              .from("archivos-publicos")
+              .remove([archivo.name]);
+
+            if (errorEliminar) {
+              informar("No se pudo eliminar el archivo: " + errorEliminar.message);
+            } else {
+              informar("Archivo eliminado.");
+              await cargarArchivos();
+            }
+          });
+
+          fila.appendChild(eliminar);
+        }
+
+        contenedor.appendChild(fila);
+      }
+    }
+
+    async function cargarNotas() {
+      const contenedor = $("notas");
+      contenedor.replaceChildren();
+
+      const { data, error } = await cliente
+        .from("notas")
+        .select("id, titulo, contenido, created_at")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        contenedor.textContent = "No se pudieron cargar las notas.";
+        console.error(error);
+        return;
+      }
+
+      if (!data || !data.length) {
+        contenedor.textContent = "Todavía no hay notas publicadas.";
+        return;
+      }
+
+      for (const nota of data) {
+        const fila = crearElemento("div", "", "item");
+        fila.appendChild(crearElemento("h3", nota.titulo));
+        fila.appendChild(crearElemento("p", nota.contenido));
+
+        if (window.esAdministrador) {
+          const eliminar = crearElemento("button", "Eliminar nota");
+          eliminar.className = "danger";
+
+          eliminar.addEventListener("click", async () => {
+            if (!confirm("¿Seguro que quieres eliminar esta nota?")) return;
+
+            const { error: errorEliminar } = await cliente
+              .from("notas")
+              .delete()
+              .eq("id", nota.id);
+
+            if (errorEliminar) {
+              informar("No se pudo eliminar la nota: " + errorEliminar.message);
+            } else {
+              informar("Nota eliminada.");
+              await cargarNotas();
+            }
+          });
+
+          fila.appendChild(eliminar);
+        }
+
+        contenedor.appendChild(fila);
+      }
+    }
+
+    async function actualizarSesion() {
+      const { data } = await cliente.auth.getSession();
+      const usuario = data.session?.user;
+
+      window.esAdministrador = false;
+
+      if (usuario) {
+        // La autorización real la aplican las políticas de Supabase.
+        // El panel solo se habilita si este usuario tiene acceso
+        // a las operaciones protegidas de administrador.
+        const { error } = await cliente.from("notas")
+          .insert({ titulo: "__prueba_permiso__", contenido: "__prueba__" })
+          .select();
+
+        // Si la prueba tuviera éxito, eliminar el registro de prueba.
+        // Si no tiene permiso, no se habilita el panel.
+        if (!error) {
+          await cliente.from("notas")
+            .delete()
+            .eq("titulo", "__prueba_permiso__")
+            .eq("contenido", "__prueba__");
+          window.esAdministrador = true;
+        }
+      }
+
+      $("login").hidden = !!usuario;
+      $("administracion").hidden = !window.esAdministrador;
+
+      if (usuario && !window.esAdministrador) {
+        informar("Sesión iniciada, pero este usuario no tiene permisos de administrador.");
+      }
+
+      await cargarArchivos();
+      await cargarNotas();
+    }
+
+    $("formLogin").addEventListener("submit", async evento => {
+      evento.preventDefault();
+      informar("Iniciando sesión...");
+
+      const { error } = await cliente.auth.signInWithPassword({
+        email: $("correo").value.trim(),
+        password: $("contrasena").value
+      });
+
+      if (error) {
+        informar("No se pudo iniciar sesión. Revisa el correo y la contraseña.");
+        return;
+      }
+
+      $("contrasena").value = "";
+      informar("Sesión iniciada.");
+      await actualizarSesion();
     });
-  </script>
 
+    $("cerrarSesion").addEventListener("click", async () => {
+      const { error } = await cliente.auth.signOut();
+      if (error) {
+        informar("No se pudo cerrar la sesión: " + error.message);
+        return;
+      }
+      informar("Sesión cerrada.");
+      await actualizarSesion();
+    });
+
+    $("subirArchivo").addEventListener("click", async () => {
+      const archivo = $("archivoNuevo").files[0];
+
+      if (!archivo) {
+        informar("Primero selecciona un archivo.");
+        return;
+      }
+
+      // Se usa el nombre del archivo; se reemplaza si ya existe.
+      const nombre = archivo.name.replace(/[\/\\]/g, "_");
+
+      informar("Subiendo archivo...");
+
+      const { error } = await cliente.storage
+        .from("archivos-publicos")
+        .upload(nombre, archivo, { upsert: true });
+
+      if (error) {
+        informar("No se pudo subir el archivo: " + error.message);
+        return;
+      }
+
+      $("archivoNuevo").value = "";
+      informar("Archivo publicado correctamente.");
+      await cargarArchivos();
+    });
+
+    $("formNota").addEventListener("submit", async evento => {
+      evento.preventDefault();
+
+      const titulo = $("titulo").value.trim();
+      const contenido = $("contenido").value.trim();
+
+      if (!titulo || !contenido) {
+        informar("Completa el título y el contenido.");
+        return;
+      }
+
+      const { error } = await cliente.from("notas").insert({
+        titulo,
+        contenido
+      });
+
+      if (error) {
+        informar("No se pudo publicar la nota: " + error.message);
+        return;
+      }
+
+      $("formNota").reset();
+      informar("Nota publicada correctamente.");
+      await cargarNotas();
+    });
+
+    cliente.auth.onAuthStateChange(() => {
+      setTimeout(() => actualizarSesion(), 0);
+    });
+
+    actualizarSesion();
+  </script>
 </body>
 </html>
