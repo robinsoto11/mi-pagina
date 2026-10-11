@@ -646,28 +646,179 @@
       </div>
 
       <div class="admin-wrap">
-        <div class="login-panel" id="login">
-          <h2>Iniciar sesión</h2>
-          <p class="admin-description">
-            Ingresa con el correo y la contraseña de tu usuario
-            administrador de Supabase.
-          </p>
+        
+async function cargarPerfil(usuario) {
+  $("correoPerfil").textContent = usuario.email || "";
 
-          <form id="formLogin">
-            <label for="email">Correo electrónico</label>
-            <input id="email" type="email" autocomplete="username"
-                   placeholder="tu-correo@ejemplo.com" required>
+  const { data, error } = await cliente
+    .from("perfiles")
+    .select("nombre, biografia")
+    .eq("id", usuario.id)
+    .maybeSingle();
 
-            <label for="password">Contraseña</label>
-            <input id="password" type="password"
-                   autocomplete="current-password"
-                   placeholder="Tu contraseña" required>
+  if (error) {
+    informar("No se pudo cargar el perfil: " + error.message);
+    return;
+  }
 
-            <button class="btn btn-primary" type="submit">
-              🔐 Iniciar sesión
-            </button>
-          </form>
-        </div>
+  if (!data) {
+    informar("No se encontró el perfil. Comprueba que el registro se completó.");
+    return;
+  }
+
+  $("nombrePerfil").value = data.nombre || "";
+  $("biografiaPerfil").value = data.biografia || "";
+}
+
+async function actualizarSesion() {
+  const { data, error } = await cliente.auth.getSession();
+
+  if (error) {
+    informar("No se pudo comprobar la sesión.");
+    return;
+  }
+
+  const usuario = data.session?.user || null;
+
+  window.esAdministrador = Boolean(
+    usuario && usuario.id === ADMIN_UID
+  );
+
+  // Los usuarios normales también pueden iniciar sesión.
+  $("accesoUsuarios").hidden = Boolean(usuario);
+  $("perfilUsuario").hidden = !usuario;
+  $("administracion").hidden = !window.esAdministrador;
+
+  if (usuario) {
+    await cargarPerfil(usuario);
+  } else {
+    $("formPerfil").reset();
+    $("correoPerfil").textContent = "";
+  }
+
+  await cargarArchivos();
+  await cargarNotas();
+}
+
+// REGISTRO DE USUARIOS
+$("formRegistro").addEventListener("submit", async (evento) => {
+  evento.preventDefault();
+
+  const nombre = $("nombreRegistro").value.trim();
+  const email = $("emailRegistro").value.trim();
+  const password = $("passwordRegistro").value;
+
+  if (!nombre || password.length < 8) {
+    informar("Escribe tu nombre y una contraseña de al menos 8 caracteres.");
+    return;
+  }
+
+  informar("Creando cuenta...");
+
+  const { data, error } = await cliente.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { nombre }
+    }
+  });
+
+  if (error) {
+    informar("No se pudo crear la cuenta: " + error.message);
+    return;
+  }
+
+  $("formRegistro").reset();
+
+  if (data.session) {
+    informar("Cuenta creada correctamente.");
+    await actualizarSesion();
+  } else {
+    informar(
+      "Cuenta registrada. Revisa tu correo para confirmar la cuenta y después inicia sesión."
+    );
+  }
+});
+
+// INICIO DE SESIÓN: administrador o usuario normal
+$("formLogin").addEventListener("submit", async (evento) => {
+  evento.preventDefault();
+  informar("Comprobando acceso...");
+
+  const email = $("email").value.trim();
+  const password = $("password").value;
+
+  const { error } = await cliente.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) {
+    informar("No se pudo iniciar sesión. Revisa tus datos y, si corresponde, confirma tu correo.");
+    return;
+  }
+
+  $("formLogin").reset();
+  informar("Sesión iniciada correctamente.");
+  await actualizarSesion();
+});
+
+// GUARDAR CAMBIOS DEL PERFIL
+$("formPerfil").addEventListener("submit", async (evento) => {
+  evento.preventDefault();
+
+  const { data: sesionData, error: sesionError } =
+    await cliente.auth.getUser();
+
+  const usuario = sesionData?.user;
+
+  if (sesionError || !usuario) {
+    informar("Inicia sesión para editar tu perfil.");
+    return;
+  }
+
+  const nombre = $("nombrePerfil").value.trim();
+  const biografia = $("biografiaPerfil").value.trim();
+
+  if (!nombre) {
+    informar("El nombre no puede estar vacío.");
+    return;
+  }
+
+  informar("Guardando perfil...");
+
+  const { error } = await cliente
+    .from("perfiles")
+    .update({
+      nombre,
+      biografia,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", usuario.id);
+
+  if (error) {
+    informar("No se pudo guardar el perfil: " + error.message);
+    return;
+  }
+
+  informar("¡Perfil actualizado correctamente!");
+  await cargarPerfil(usuario);
+});
+
+// CERRAR SESIÓN para cualquier usuario
+$("cerrarSesion").addEventListener("click", async () => {
+  const { error } = await cliente.auth.signOut();
+
+  if (error) {
+    informar("No se pudo cerrar sesión: " + error.message);
+    return;
+  }
+
+  window.esAdministrador = false;
+  informar("Sesión cerrada.");
+  await actualizarSesion();
+});
+
 
         <div id="administracion" hidden>
           <h2>Panel de administrador</h2>
