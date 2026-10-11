@@ -178,6 +178,7 @@
 
     const SUPABASE_KEY =
       "sb_publishable_uVyHJ9U5mz2kUBJ12dH9rQ_F-wH9-a3";
+    const ADMIN_UID = "23046bff-0a92-4006-8b35-daac3ebd1ba2";
 
     const cliente = window.supabase.createClient(
       SUPABASE_URL,
@@ -310,41 +311,33 @@
       }
     }
 
-    async function actualizarSesion() {
-      const { data } = await cliente.auth.getSession();
-      const usuario = data.session?.user;
+  
+async function actualizarSesion() {
+  const { data, error } = await cliente.auth.getSession();
 
-      window.esAdministrador = false;
+  if (error) {
+    informar("No se pudo comprobar la sesión.");
+    return;
+  }
 
-      if (usuario) {
-        // La autorización real la aplican las políticas de Supabase.
-        // El panel solo se habilita si este usuario tiene acceso
-        // a las operaciones protegidas de administrador.
-        const { error } = await cliente.from("notas")
-          .insert({ titulo: "__prueba_permiso__", contenido: "__prueba__" })
-          .select();
+  const usuario = data.session?.user;
 
-        // Si la prueba tuviera éxito, eliminar el registro de prueba.
-        // Si no tiene permiso, no se habilita el panel.
-        if (!error) {
-          await cliente.from("notas")
-            .delete()
-            .eq("titulo", "__prueba_permiso__")
-            .eq("contenido", "__prueba__");
-          window.esAdministrador = true;
-        }
-      }
+  window.esAdministrador =
+    !!usuario && usuario.id === ADMIN_UID;
 
-      $("login").hidden = !!usuario;
-      $("administracion").hidden = !window.esAdministrador;
+  $("login").hidden = !!usuario;
+  $("administracion").hidden = !window.esAdministrador;
 
-      if (usuario && !window.esAdministrador) {
-        informar("Sesión iniciada, pero este usuario no tiene permisos de administrador.");
-      }
+  if (usuario && !window.esAdministrador) {
+    informar("Tu usuario no tiene permisos de administrador.");
+  } else {
+    informar("");
+  }
 
-      await cargarArchivos();
-      await cargarNotas();
-    }
+  await cargarArchivos();
+  await cargarNotas();
+}
+
 
     $("formLogin").addEventListener("submit", async evento => {
       evento.preventDefault();
