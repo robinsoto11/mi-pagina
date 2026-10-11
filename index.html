@@ -761,10 +761,10 @@
       const contenedor = $("listaNotas");
       contenedor.replaceChildren();
 
-      const { data, error } = await cliente
-        .from("notas")
-        .select("id, titulo, contenido, created_at")
-        .order("created_at", { ascending: false });
+const { data, error } = await cliente
+  .from("notas")
+  .select("id, titulo, contenido, created_at, autor_id")
+  .order("created_at", { ascending: false });
 
       if (error) {
         contenedor.append(vacio("No se pudieron cargar las notas."));
@@ -795,10 +795,30 @@
         contenido.textContent = nota.contenido;
 
         const fecha = document.createElement("div");
+        
+      const autor = document.createElement("div");
+       autor.className = "card-date";
+        autor.textContent = "Publicado por: cargando...";
+
         fecha.className = "card-date";
         fecha.textContent = "Publicado: " + fechaBonita(nota.created_at);
 
-        cuerpo.append(icono, titulo, contenido, fecha);
+        
+if (nota.autor_id) {
+  const { data: perfil } = await cliente
+    .from("perfiles")
+    .select("nombre")
+    .eq("id", nota.autor_id)
+    .maybeSingle();
+
+  autor.textContent = "Publicado por: " +
+    (perfil?.nombre || "Usuario");
+} else {
+  autor.textContent = "Publicado por: Usuario";
+}
+
+cuerpo.append(icono, titulo, contenido, autor, fecha);
+
 
         if (window.esAdministrador) {
           cuerpo.append(boton("Eliminar nota", "btn-danger", async () => {
@@ -1067,9 +1087,23 @@
 
       informar("Publicando nota...");
 
-      const { error } = await cliente
-        .from("notas")
-        .insert([{ titulo, contenido }]);
+      const { data: usuarioData, error: usuarioError } =
+  await cliente.auth.getUser();
+
+const usuario = usuarioData?.user;
+
+if (usuarioError || !usuario || usuario.id !== ADMIN_UID) {
+  informar("No tienes permiso para publicar notas.");
+  return;
+}
+
+const { error } = await cliente
+  .from("notas")
+  .insert([{
+    titulo,
+    contenido,
+    autor_id: usuario.id
+  }]);
 
       if (error) {
         informar("No se pudo publicar la nota: " + error.message);
