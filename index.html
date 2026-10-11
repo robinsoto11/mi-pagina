@@ -421,9 +421,12 @@ async function actualizarSesion() {
       await cargarNotas();
     });
 
-    cliente.auth.onAuthStateChange(() => {
-      setTimeout(() => actualizarSesion(), 0);
-    });
+    
+actualizarSesion();
+</script>
+</body>
+</html>
+
 
     actualizarSesion();
   </script>
