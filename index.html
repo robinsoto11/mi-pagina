@@ -546,6 +546,21 @@
           </button>
         </div>
 
+        <div id="publicarNotas" hidden style="margin-top:22px;">
+  <form class="form-panel" id="formNota">
+    <h3>✎ Publicar una nota</h3>
+    <label for="titulo">Título</label>
+    <input id="titulo" type="text" maxlength="150" required>
+
+    <label for="contenido">Contenido</label>
+    <textarea id="contenido" maxlength="10000" required></textarea>
+
+    <button class="btn btn-primary" type="submit">
+      Publicar nota
+    </button>
+  </form>
+</div>
+
         <div id="administracion" hidden>
           <h2>Panel de administrador</h2>
           <p class="admin-description">
@@ -565,19 +580,7 @@
               </button>
             </form>
 
-            <form class="form-panel" id="formNota">
-              <h3>✎ Publicar una nota</h3>
-
-              <label for="titulo">Título</label>
-              <input id="titulo" type="text" maxlength="150" required>
-
-              <label for="contenido">Contenido</label>
-              <textarea id="contenido" maxlength="10000" required></textarea>
-
-              <button class="btn btn-primary" type="submit">
-                Publicar nota
-              </button>
-            </form>
+           
           </div>
         </div>
 
@@ -804,18 +807,19 @@ const { data, error } = await cliente
         fecha.textContent = "Publicado: " + fechaBonita(nota.created_at);
 
         
+
 if (nota.autor_id) {
-  const { data: perfil } = await cliente
-    .from("perfiles")
-    .select("nombre")
-    .eq("id", nota.autor_id)
-    .maybeSingle();
+  const { data: nombreAutor, error: errorAutor } =
+    await cliente.rpc("obtener_nombre_autor", {
+      usuario_id: nota.autor_id
+    });
 
   autor.textContent = "Publicado por: " +
-    (perfil?.nombre || "Usuario");
+    (errorAutor ? "Usuario" : (nombreAutor || "Usuario"));
 } else {
   autor.textContent = "Publicado por: Usuario";
 }
+
 
 cuerpo.append(icono, titulo, contenido, autor, fecha);
 
@@ -889,6 +893,7 @@ cuerpo.append(icono, titulo, contenido, autor, fecha);
       $("accesoUsuarios").hidden = Boolean(usuario);
       $("perfilUsuario").hidden = !usuario;
       $("administracion").hidden = !window.esAdministrador;
+      $("publicarNotas").hidden = !usuario;
 
       if (usuario) {
         await cargarPerfil(usuario);
@@ -1068,52 +1073,46 @@ cuerpo.append(icono, titulo, contenido, autor, fecha);
     });
 
     // PUBLICAR NOTAS: ADMINISTRADOR
-    $("formNota").addEventListener("submit", async (evento) => {
-      evento.preventDefault();
+  
+$("formNota").addEventListener("submit", async (evento) => {
+  evento.preventDefault();
 
-      const { data: usuarioData } = await cliente.auth.getUser();
-      if (!usuarioData?.user || usuarioData.user.id !== ADMIN_UID) {
-        informar("Debes iniciar sesión como administrador.");
-        return;
-      }
+  const { data: usuarioData, error: errorUsuario } =
+    await cliente.auth.getUser();
 
-      const titulo = $("titulo").value.trim();
-      const contenido = $("contenido").value.trim();
+  const usuario = usuarioData?.user;
 
-      if (!titulo || !contenido) {
-        informar("Completa el título y el contenido de la nota.");
-        return;
-      }
+  if (errorUsuario || !usuario) {
+    informar("Debes iniciar sesión para publicar una nota.");
+    return;
+  }
 
-      informar("Publicando nota...");
+  const titulo = $("titulo").value.trim();
+  const contenido = $("contenido").value.trim();
 
-      const { data: usuarioData, error: usuarioError } =
-  await cliente.auth.getUser();
+  if (!titulo || !contenido) {
+    informar("Completa el título y el contenido de la nota.");
+    return;
+  }
 
-const usuario = usuarioData?.user;
+  informar("Publicando nota...");
 
-if (usuarioError || !usuario || usuario.id !== ADMIN_UID) {
-  informar("No tienes permiso para publicar notas.");
-  return;
-}
-
-const { error } = await cliente
-  .from("notas")
-  .insert([{
+  const { error } = await cliente.from("notas").insert([{
     titulo,
     contenido,
     autor_id: usuario.id
   }]);
 
-      if (error) {
-        informar("No se pudo publicar la nota: " + error.message);
-        return;
-      }
+  if (error) {
+    informar("No se pudo publicar la nota: " + error.message);
+    return;
+  }
 
-      $("formNota").reset();
-      informar("Nota publicada correctamente.");
-      await cargarNotas();
-    });
+  $("formNota").reset();
+  informar("Nota publicada correctamente.");
+  await cargarNotas();
+});
+
 
     // CARGA INICIAL
     actualizarSesion();
