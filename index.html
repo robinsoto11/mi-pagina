@@ -1,0 +1,182 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi espacio web</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    header {
+      background: #172554;
+      color: white;
+      padding: 30px 20px;
+      text-align: center;
+    }
+
+    header p {
+      color: #cbd5e1;
+    }
+
+    main {
+      max-width: 850px;
+      margin: 30px auto;
+      padding: 0 18px;
+    }
+
+    section {
+      background: white;
+      padding: 22px;
+      margin-bottom: 22px;
+      border-radius: 12px;
+      box-shadow: 0 3px 12px #0000000d;
+    }
+
+    h2 {
+      color: #1d4ed8;
+    }
+
+    input, textarea, button {
+      width: 100%;
+      padding: 12px;
+      margin: 7px 0;
+      font: inherit;
+      border-radius: 7px;
+    }
+
+    input, textarea {
+      border: 1px solid #cbd5e1;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    .item {
+      border-top: 1px solid #e2e8f0;
+      padding: 12px 0;
+      overflow-wrap: anywhere;
+    }
+
+    .aviso {
+      background: #fef3c7;
+      color: #92400e;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #64748b;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Mi espacio web</h1>
+    <p>Archivos, documentos y notas en un solo lugar.</p>
+  </header>
+
+  <main>
+
+    <section>
+      <h2>📁 Archivos compartidos</h2>
+      <p>Documentos disponibles para los visitantes.</p>
+
+      <div id="archivos">
+        <p>Todavía no hay archivos publicados.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>📝 Notas</h2>
+
+      <div id="notas">
+        <p>Todavía no hay notas publicadas.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>🔐 Panel de administrador</h2>
+
+      <p class="aviso">
+        Esta es una versión inicial. El panel todavía no tiene
+        autenticación real ni guarda información permanentemente.
+      </p>
+
+      <label for="titulo">Título de la nota</label>
+      <input
+        type="text"
+        id="titulo"
+        placeholder="Escribe un título"
+      >
+
+      <label for="contenido">Contenido de la nota</label>
+      <textarea
+        id="contenido"
+        rows="4"
+        placeholder="Escribe tu nota aquí"
+      ></textarea>
+
+      <button id="guardar">Vista previa de la nota</button>
+
+      <div id="resultado"></div>
+    </section>
+
+  </main>
+
+  <footer>
+    Mi espacio web © 2026
+  </footer>
+
+  <script>
+    document.getElementById("guardar").addEventListener("click", () => {
+      const titulo = document.getElementById("titulo").value.trim();
+      const contenido = document.getElementById("contenido").value.trim();
+      const resultado = document.getElementById("resultado");
+
+      if (!titulo || !contenido) {
+        resultado.textContent = "Completa el título y el contenido.";
+        return;
+      }
+
+      resultado.replaceChildren();
+
+      const nota = document.createElement("div");
+      nota.className = "item";
+
+      const encabezado = document.createElement("h3");
+      encabezado.textContent = titulo;
+
+      const texto = document.createElement("p");
+      texto.textContent = contenido;
+
+      nota.append(encabezado, texto);
+      resultado.appendChild(nota);
+    });
+  </script>
+
+</body>
+</html>
