@@ -775,6 +775,315 @@
       SUPABASE_URL,
       SUPABASE_KEY
     );
+    
+const BUCKET_JUEGOS = "zona-gamer";
+const UID_ADMIN_ZG = "23046bff-0a92-4006-8b35-daac3ebd1ba2";
+
+let usuarioZonaGamer = null;
+let cargandoZonaGamer = false;
+
+const zg = (id) => document.getElementById(id);
+
+function zgElemento(etiqueta, clase, texto) {
+  const elemento = document.createElement(etiqueta);
+  if (clase) elemento.className = clase;
+  if (texto !== undefined) elemento.textContent = texto;
+  return elemento;
+}
+
+function zgFecha(fecha) {
+  return new Date(fecha).toLocaleString("es-SV");
+}
+
+// Actualiza los permisos visibles según la sesión
+async function actualizarZonaGamer() {
+  const { data, error } = await cliente.auth.getUser();
+
+  usuarioZonaGamer = error ? null : data.user;
+
+  zg("formJuego").hidden =
+    usuarioZonaGamer?.id !== UID_ADMIN_ZG;
+
+  await cargarZonaGamer();
+}
+
+// Subir imagen y registrar la tarjeta
+zg("formJuego").addEventListener("submit", async (evento) => {
+  evento.preventDefault();
+
+  const estado = zg("estadoJuego");
+  const boton = zg("formJuego").querySelector('button[type="submit"]');
+
+  if (usuarioZonaGamer?.id !== UID_ADMIN_ZG) {
+    estado.textContent = "No tienes permiso para subir imágenes.";
+    return;
+  }
+
+  const titulo = zg("tituloJuego").value.trim();
+  const archivo = zg("imagenJuego").files[0];
+
+  if (!titulo || !archivo) {
+    estado.textContent = "Escribe el nombre y selecciona una imagen.";
+    return;
+  }
+
+  const tiposPermitidos = ["image/jpeg", "image/png", "image/webp"];
+
+  if (!tiposPermitidos.includes(archivo.type) ||
+      archivo.size > 5 * 1024 * 1024) {
+    estado.textContent =
+      "Usa una imagen JPG, PNG o WebP de máximo 5 MB.";
+    return;
+  }
+
+  boton.disabled = true;
+  estado.textContent = "Subiendo imagen...";
+
+  let rutaImagen = null;
+
+  try {
+    // Confirmar la sesión actual antes de subir
+    const { data: sesionData, error: sesionError } =
+      await cliente.auth.getUser();
+
+    if (sesionError ||
+        sesionData.user?.id !== UID_ADMIN_ZG) {
+      throw new Error("La sesión de administrador no es válida.");
+    }
+
+    // Crear un nombre de archivo único
+    const extension = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp"
+    }[archivo.type];
+
+    rutaImagen = `${crypto.randomUUID()}.${extension}`;
+
+    const { error: errorSubida } = await cliente.storage
+      .from(BUCKET_JUEGOS)
+      .upload(rutaImagen, archivo, {
+        upsert: false,
+        contentType: archivo.type
+      });
+
+    if (errorSubida) throw errorSubida;
+
+    const { data: urlData } = cliente.storage
+      .from(BUCKET_JUEGOS)
+      .getPublicUrl(rutaImagen);
+
+    // Guardar la tarjeta en la base de datos
+    const { error: errorBD } = await cliente
+      .from("juegos")
+      .insert([{
+        titulo,
+        imagen_url: urlData.publicUrl,
+        imagen_path: rutaImagen,
+        autor_id: sesionData.user.id
+      }]);
+
+    if (errorBD) throw errorBD;
+
+    zg("formJuego").reset();
+    estado.textContent = "¡Imagen agregada correctamente!";
+    await cargarZonaGamer();
+
+  } catch (error) {
+    // Si la imagen subió pero falló la base de datos,
+    // intentar eliminar el archivo que quedó sin tarjeta.
+    if (rutaImagen) {
+      await cliente.storage
+        .from(BUCKET_JUEGOS)
+        .remove([rutaImagen]);
+    }
+
+    console.error("Error en Zona Gamer:", error);
+    estado.textContent =
+      error.message || "No se pudo subir la imagen.";
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+// Obtener el nombre público del autor mediante tu función RPC existente
+async function nombreAutorZG(uid) {
+  if (!uid) return "Usuario";
+
+  const { data, error } = await cliente.rpc(
+    "obtener_nombre_autor",
+    { usuario_id: uid }
+  );
+
+  return !error && data ? String(data) : "Usuario";
+}
+
+// Cargar juegos y sus comentarios
+async function cargarZonaGamer() {
+  if (cargandoZonaGamer) return;
+  cargandoZonaGamer = true;
+
+  const galeria = zg("galeriaJuegos");
+  const estado = zg("estadoGaleria");
+
+  galeria.replaceChildren();
+  estado.textContent = "Cargando juegos...";
+
+  try {
+    const { data: juegos, error } = await cliente
+      .from("juegos")
+      .select("id,titulo,imagen_url,created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    if (!juegos || juegos.length === 0) {
+      estado.textContent = "Todavía no hay imágenes. ¡Pronto habrá juegos!";
+      return;
+    }
+
+    estado.textContent = "";
+
+    for (const juego of juegos) {
+      const tarjeta = zgElemento("article", "zg-tarjeta");
+
+      const imagen = zgElemento("img", "zg-imagen");
+      imagen.src = juego.imagen_url;
+      imagen.alt = `Imagen de ${juego.titulo}`;
+      imagen.loading = "lazy";
+      imagen.referrerPolicy = "no-referrer";
+
+      const cuerpo = zgElemento("div", "zg-cuerpo");
+      const titulo = zgElemento("h3", "", juego.titulo);
+      const fecha = zgElemento(
+        "p", "zg-fecha", zgFecha(juego.created_at)
+      );
+
+      const encabezadoComentarios = zgElemento(
+        "h4", "", "Opiniones de la comunidad"
+      );
+      const listaComentarios = zgElemento("div", "zg-comentarios");
+      const formulario = zgElemento("form", "zg-comentario-form");
+      const entrada = zgElemento("input");
+      entrada.type = "text";
+      entrada.maxLength = 1000;
+      entrada.placeholder = "¿Qué te pareció este juego?";
+      entrada.setAttribute("aria-label", "Tu comentario");
+      entrada.required = true;
+
+      const boton = zgElemento("button", "", "Comentar");
+      boton.type = "submit";
+
+      formulario.append(entrada, boton);
+
+      if (!usuarioZonaGamer) {
+        const aviso = zgElemento(
+          "p", "", "Inicia sesión para dejar tu comentario."
+        );
+        formulario.replaceChildren(aviso);
+      }
+
+      // Leer comentarios de esta tarjeta
+      const { data: comentarios, error: errorComentarios } =
+        await cliente
+          .from("comentarios_juegos")
+          .select("id,autor_id,contenido,created_at")
+          .eq("juego_id", juego.id)
+          .order("created_at", { ascending: true });
+
+      if (errorComentarios) {
+        listaComentarios.append(
+          zgElemento("p", "", "No se pudieron cargar los comentarios.")
+        );
+      } else if (!comentarios || comentarios.length === 0) {
+        listaComentarios.append(
+          zgElemento("p", "", "Sé el primero en comentar.")
+        );
+      } else {
+        for (const comentario of comentarios) {
+          const bloque = zgElemento("div", "zg-comentario");
+          const autor = zgElemento(
+            "strong", "",
+            await nombreAutorZG(comentario.autor_id)
+          );
+          const texto = zgElemento("p", "", comentario.contenido);
+          const fechaComentario = zgElemento(
+            "small", "zg-fecha", zgFecha(comentario.created_at)
+          );
+
+          bloque.append(autor, texto, fechaComentario);
+          listaComentarios.append(bloque);
+        }
+      }
+
+      // Registrar comentario
+      formulario.addEventListener("submit", async (evento) => {
+        evento.preventDefault();
+
+        const contenido = entrada.value.trim();
+        if (!contenido) return;
+
+        const { data: sesion, error: errorSesion } =
+          await cliente.auth.getUser();
+
+        if (errorSesion || !sesion.user) {
+          alert("Debes iniciar sesión para comentar.");
+          return;
+        }
+
+        boton.disabled = true;
+
+        try {
+          const { error: errorInsertar } = await cliente
+            .from("comentarios_juegos")
+            .insert([{
+              juego_id: juego.id,
+              autor_id: sesion.user.id,
+              contenido
+            }]);
+
+          if (errorInsertar) throw errorInsertar;
+
+          entrada.value = "";
+          await cargarZonaGamer();
+
+        } catch (error) {
+          console.error(error);
+          alert("No se pudo publicar el comentario.");
+        } finally {
+          boton.disabled = false;
+        }
+      });
+
+      cuerpo.append(
+        titulo,
+        fecha,
+        encabezadoComentarios,
+        listaComentarios,
+        formulario
+      );
+
+      tarjeta.append(imagen, cuerpo);
+      galeria.append(tarjeta);
+    }
+  } catch (error) {
+    console.error("Error cargando Zona Gamer:", error);
+    estado.textContent =
+      "No se pudieron cargar los juegos. Revisa Supabase.";
+  } finally {
+    cargandoZonaGamer = false;
+  }
+}
+
+// Actualizar permisos al iniciar sesión, cerrar sesión o cambiar usuario
+cliente.auth.onAuthStateChange(() => {
+  setTimeout(() => {
+    actualizarZonaGamer();
+  }, 0);
+});
+
+actualizarZonaGamer();
+
 
     const $ = (id) => document.getElementById(id);
     window.esAdministrador = false;
