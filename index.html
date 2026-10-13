@@ -432,6 +432,42 @@
     </div>
   </header>
 
+<section id="zonaGamer" class="zona-gamer">
+  <div class="zg-encabezado">
+    <span class="zg-etiqueta">GAMING COMMUNITY</span>
+    <h2>🎮 Zona Gamer</h2>
+    <p>Comparte tu opinión sobre tus juegos favoritos.</p>
+  </div>
+
+  <!-- Solo el administrador podrá utilizar este formulario -->
+  <form id="formJuego" class="zg-formulario" hidden>
+    <h3>Agregar imagen de un juego</h3>
+
+    <label for="tituloJuego">Nombre del juego</label>
+    <input
+      id="tituloJuego"
+      type="text"
+      maxlength="100"
+      placeholder="Ej. EA SPORTS FC 26"
+      required
+    >
+
+    <label for="imagenJuego">Selecciona una imagen</label>
+    <input
+      id="imagenJuego"
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      required
+    >
+
+    <button type="submit">Subir imagen</button>
+    <p id="estadoJuego" role="status"></p>
+  </form>
+
+  <div id="galeriaJuegos" class="zg-galeria"></div>
+  <p id="estadoGaleria" role="status"></p>
+</section>
+
   <main class="container">
     <section class="hero">
       <div>
