@@ -13,6 +13,139 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
+    
+.zona-gamer {
+  margin: 40px auto;
+  padding: 24px;
+  max-width: 1200px;
+  color: #f5f3ff;
+  font-family: inherit;
+}
+
+.zg-encabezado {
+  margin-bottom: 28px;
+}
+
+.zg-etiqueta {
+  color: #22d3ee;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.zg-encabezado h2 {
+  margin: 10px 0;
+  font-size: clamp(28px, 4vw, 42px);
+  color: #c4b5fd;
+  text-shadow: 0 0 18px #8b5cf680;
+}
+
+.zg-formulario {
+  margin-bottom: 28px;
+  padding: 20px;
+  border: 1px solid #8b5cf6;
+  border-radius: 16px;
+  background: #17152a;
+}
+
+.zg-formulario[hidden] {
+  display: none;
+}
+
+.zg-formulario label {
+  display: block;
+  margin: 14px 0 7px;
+}
+
+.zg-formulario input,
+.zg-comentario-form input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  color: white;
+  background: #0b1020;
+  border: 1px solid #454064;
+  border-radius: 9px;
+}
+
+.zg-formulario button,
+.zg-comentario-form button {
+  margin-top: 14px;
+  padding: 11px 17px;
+  color: white;
+  background: linear-gradient(100deg, #7c3aed, #0891b2);
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.zg-galeria {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  gap: 22px;
+}
+
+.zg-tarjeta {
+  min-width: 0;
+  overflow: hidden;
+  background: #111426;
+  border: 1px solid #514477;
+  border-radius: 16px;
+  box-shadow: 0 0 18px #7c3aed20;
+}
+
+.zg-imagen {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #090b16;
+}
+
+.zg-cuerpo {
+  padding: 16px;
+}
+
+.zg-cuerpo h3 {
+  margin: 0 0 14px;
+  color: #a5f3fc;
+  overflow-wrap: anywhere;
+}
+
+.zg-comentarios {
+  display: grid;
+  gap: 10px;
+}
+
+.zg-comentario {
+  padding: 10px;
+  border-radius: 9px;
+  background: #1d2036;
+  overflow-wrap: anywhere;
+}
+
+.zg-comentario strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #c4b5fd;
+}
+
+.zg-comentario-form {
+  margin-top: 14px;
+}
+
+.zg-comentario-form p {
+  color: #a5f3fc;
+  font-size: 13px;
+}
+
+.zg-fecha {
+  margin-top: 12px;
+  color: #aaa8c2;
+  font-size: 12px;
+}
+
     :root {
       --bg: #090914;
       --panel: #141426;
